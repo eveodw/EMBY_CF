@@ -88,26 +88,23 @@ jobs:
           async function createWorkerRoute() {
             try {
               console.log('正在创建Worker路由...');
-              console.log('路由模式:', customDomain + '/*');
-              console.log('Worker名称:', workerName);
-              console.log('账户ID:', accountId);
+              const routeUrl = 'https://api.cloudflare.com/client/v4/accounts/' + accountId + '/workers/routes';
+              console.log('路由URL:', routeUrl);
               
-              const url = 'https://api.cloudflare.com/client/v4/accounts/' + accountId + '/workers/scripts/' + workerName + '/routes';
-              console.log('API URL:', url);
-              
-              const data = {
-                pattern: customDomain + '/*'
+              const routeData = {
+                pattern: customDomain + '/*',
+                script: workerName
               };
-              console.log('请求数据:', JSON.stringify(data));
+              console.log('路由数据:', JSON.stringify(routeData));
               
-              const response = await axios.post(url, data, { headers });
-              console.log('Worker路由创建成功:', JSON.stringify(response.data, null, 2));
+              const routeResponse = await axios.post(routeUrl, routeData, { headers });
+              console.log('Worker路由创建成功:', JSON.stringify(routeResponse.data, null, 2));
             } catch (error) {
               console.error('Worker路由创建失败:');
-              console.error('错误消息:', error.message);
+              console.error('错误:', error.message);
               if (error.response) {
-                console.error('响应状态:', error.response.status);
-                console.error('响应数据:', JSON.stringify(error.response.data, null, 2));
+                console.error('状态码:', error.response.status);
+                console.error('响应:', JSON.stringify(error.response.data, null, 2));
               }
             }
           }
@@ -116,43 +113,37 @@ jobs:
           async function createDNSRecord() {
             try {
               console.log('正在检查DNS记录...');
-              console.log('区域ID:', zoneId);
-              console.log('域名:', customDomain);
+              const dnsCheckUrl = 'https://api.cloudflare.com/client/v4/zones/' + zoneId + '/dns_records?type=CNAME&name=' + customDomain;
+              console.log('DNS检查URL:', dnsCheckUrl);
               
-              // 检查是否已存在A记录
-              const checkUrl = 'https://api.cloudflare.com/client/v4/zones/' + zoneId + '/dns_records?type=A&name=' + customDomain;
-              console.log('检查URL:', checkUrl);
+              const dnsCheckResponse = await axios.get(dnsCheckUrl, { headers });
+              console.log('DNS检查响应:', JSON.stringify(dnsCheckResponse.data, null, 2));
               
-              const checkResponse = await axios.get(checkUrl, { headers });
-              console.log('DNS记录检查结果:', checkResponse.data.result.length > 0 ? '已存在' : '不存在');
-              console.log('检查响应:', JSON.stringify(checkResponse.data, null, 2));
-              
-              if (checkResponse.data.result.length === 0) {
+              if (dnsCheckResponse.data.result && dnsCheckResponse.data.result.length === 0) {
                 console.log('正在创建DNS记录...');
-                // 创建A记录指向192.0.2.1（Cloudflare的占位IP）
-                const createUrl = 'https://api.cloudflare.com/client/v4/zones/' + zoneId + '/dns_records';
-                console.log('创建URL:', createUrl);
+                const dnsCreateUrl = 'https://api.cloudflare.com/client/v4/zones/' + zoneId + '/dns_records';
+                console.log('DNS创建URL:', dnsCreateUrl);
                 
-                const data = {
-                  type: 'A',
+                const dnsData = {
+                  type: 'CNAME',
                   name: customDomain,
-                  content: '192.0.2.1',
+                  content: 'dirige.cf.cnae.top',
                   ttl: 1,
                   proxied: true
                 };
-                console.log('请求数据:', JSON.stringify(data));
+                console.log('DNS数据:', JSON.stringify(dnsData));
                 
-                const response = await axios.post(createUrl, data, { headers });
-                console.log('DNS记录创建成功:', JSON.stringify(response.data, null, 2));
+                const dnsCreateResponse = await axios.post(dnsCreateUrl, dnsData, { headers });
+                console.log('DNS记录创建成功:', JSON.stringify(dnsCreateResponse.data, null, 2));
               } else {
                 console.log('DNS记录已存在，跳过创建');
               }
             } catch (error) {
               console.error('DNS记录操作失败:');
-              console.error('错误消息:', error.message);
+              console.error('错误:', error.message);
               if (error.response) {
-                console.error('响应状态:', error.response.status);
-                console.error('响应数据:', JSON.stringify(error.response.data, null, 2));
+                console.error('状态码:', error.response.status);
+                console.error('响应:', JSON.stringify(error.response.data, null, 2));
               }
             }
           }
@@ -163,7 +154,7 @@ jobs:
             await createDNSRecord();
             console.log('=== 部署流程完成 ===');
           })();
-          "
+          " 
       
       - name: 检查环境变量配置
         run: |
